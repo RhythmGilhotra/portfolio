@@ -4,7 +4,6 @@ import { useFrame, useThree } from "@react-three/fiber";
 import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { scrollState, chapterFloat } from "@/lib/scrollState";
-import { particleVert, particleFrag } from "./shaders";
 import Environments, { CHAPTER_GAP } from "./environments";
 
 // Per-chapter colour grade — the void itself shifts hue as you travel.
@@ -83,83 +82,6 @@ function SceneGrade({
     if (point.current) point.current.color.copy(key.current);
   });
   return null;
-}
-
-// Soft radial sprite used for the nebula haze.
-function useHazeTexture() {
-  return useMemo(() => {
-    const s = 128;
-    const c = document.createElement("canvas");
-    c.width = c.height = s;
-    const ctx = c.getContext("2d")!;
-    const g = ctx.createRadialGradient(s / 2, s / 2, 0, s / 2, s / 2, s / 2);
-    g.addColorStop(0, "rgba(255,255,255,0.9)");
-    g.addColorStop(0.4, "rgba(255,255,255,0.25)");
-    g.addColorStop(1, "rgba(255,255,255,0)");
-    ctx.fillStyle = g;
-    ctx.fillRect(0, 0, s, s);
-    const tex = new THREE.CanvasTexture(c);
-    tex.colorSpace = THREE.SRGBColorSpace;
-    return tex;
-  }, []);
-}
-
-// Colored volumetric haze drifting in the deep background. Normal-blended and
-// fog-enabled so it fades with distance instead of punching through.
-function Nebula({ tier }: { tier: "low" | "high" }) {
-  const tex = useHazeTexture();
-  const count = tier === "high" ? 14 : 7;
-  const items = useMemo(() => {
-    const arr: {
-      pos: [number, number, number];
-      scale: number;
-      color: THREE.Color;
-      rot: number;
-      speed: number;
-    }[] = [];
-    for (let i = 0; i < count; i++) {
-      const chapter = Math.floor((i / count) * PALETTE.length);
-      arr.push({
-        pos: [
-          (Math.random() - 0.5) * 30,
-          (Math.random() - 0.5) * 20,
-          6 - Math.random() * CHAPTER_GAP * 7,
-        ],
-        scale: 12 + Math.random() * 20,
-        color: new THREE.Color(PALETTE[chapter].haze),
-        rot: Math.random() * Math.PI,
-        speed: 0.02 + Math.random() * 0.05,
-      });
-    }
-    return arr;
-  }, [count]);
-
-  const group = useRef<THREE.Group>(null);
-  useFrame((s) => {
-    if (!group.current) return;
-    group.current.children.forEach((m, i) => {
-      m.rotation.z = items[i].rot + s.clock.elapsedTime * items[i].speed;
-    });
-  });
-
-  return (
-    <group ref={group}>
-      {items.map((it, i) => (
-        <mesh key={i} position={it.pos} scale={it.scale}>
-          <planeGeometry args={[1, 1]} />
-          <meshBasicMaterial
-            map={tex}
-            color={it.color}
-            transparent
-            opacity={0.42}
-            depthWrite={false}
-            blending={THREE.AdditiveBlending}
-            fog
-          />
-        </mesh>
-      ))}
-    </group>
-  );
 }
 
 // A floating system-architecture diagram: service nodes wired by edges with
@@ -262,7 +184,7 @@ function SystemGraph({
 
 // Scatters system-architecture graphs through the corridor as background depth.
 function SystemField({ tier }: { tier: "low" | "high" }) {
-  const count = tier === "high" ? 12 : 6;
+  const count = tier === "high" ? 20 : 10;
   const graphs = useMemo(
     () =>
       Array.from({ length: count }, (_, i) => ({
@@ -293,51 +215,100 @@ function SystemField({ tier }: { tier: "low" | "high" }) {
   );
 }
 
-function StarField({ count = 2600, tier }: { count?: number; tier: "low" | "high" }) {
-  const n = tier === "high" ? count : Math.floor(count * 0.5);
-  const ref = useRef<THREE.ShaderMaterial>(null);
+// Blueprint grid — a floor and ceiling of engineering-schematic gridlines
+// running the length of the corridor. Establishes a technical, system-design
+// space instead of open sky.
+function BlueprintGrid() {
+  const grids = useMemo(() => {
+    const mid = -CHAPTER_GAP * 3.5;
+    const make = (y: number, color: string, opacity: number) => {
+      const g = new THREE.GridHelper(240, 96, color, color);
+      const m = g.material as THREE.LineBasicMaterial;
+      m.transparent = true;
+      m.opacity = opacity;
+      m.fog = true;
+      g.position.set(0, y, mid);
+      return g;
+    };
+    return [make(-9, "#2b6a9e", 0.16), make(9, "#7a5a24", 0.1)];
+  }, []);
+  return (
+    <>
+      {grids.map((g, i) => (
+        <primitive key={i} object={g} />
+      ))}
+    </>
+  );
+}
 
-  const { geo } = useMemo(() => {
-    const positions = new Float32Array(n * 3);
-    const scales = new Float32Array(n);
-    const seeds = new Float32Array(n);
-    const depth = CHAPTER_GAP * 8;
-    for (let i = 0; i < n; i++) {
-      positions[i * 3] = (Math.random() - 0.5) * 46;
-      positions[i * 3 + 1] = (Math.random() - 0.5) * 34;
-      positions[i * 3 + 2] = 12 - Math.random() * depth;
-      scales[i] = 0.4 + Math.random() * 1.6;
-      seeds[i] = Math.random();
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    g.setAttribute("aScale", new THREE.BufferAttribute(scales, 1));
-    g.setAttribute("aSeed", new THREE.BufferAttribute(seeds, 1));
-    return { geo: g };
-  }, [n]);
+// Circuit-trace data buses — long lines threading the corridor, each carrying a
+// bright pulse that runs its length. Reads as data on a bus / PCB traces.
+function CircuitTraces({ tier }: { tier: "low" | "high" }) {
+  const count = tier === "high" ? 26 : 13;
+  const traces = useMemo(() => {
+    return Array.from({ length: count }, () => {
+      const along = Math.random() > 0.4 ? "z" : "x";
+      const color = Math.random() > 0.5 ? "#8ab4d8" : "#d4af6a";
+      // anchor away from the centre so buses frame, not cover, the content
+      const ox = (Math.random() > 0.5 ? 1 : -1) * (5 + Math.random() * 12);
+      const oy = (Math.random() - 0.5) * 16;
+      const oz = 4 - Math.random() * CHAPTER_GAP * 7;
+      let a: THREE.Vector3, b: THREE.Vector3;
+      if (along === "z") {
+        const len = 8 + Math.random() * 16;
+        a = new THREE.Vector3(ox, oy, oz);
+        b = new THREE.Vector3(ox, oy, oz - len);
+      } else {
+        const len = 6 + Math.random() * 10;
+        const dir = Math.random() > 0.5 ? 1 : -1;
+        a = new THREE.Vector3(ox, oy, oz);
+        b = new THREE.Vector3(ox + dir * len, oy, oz);
+      }
+      const geo = new THREE.BufferGeometry().setAttribute(
+        "position",
+        new THREE.Float32BufferAttribute([...a.toArray(), ...b.toArray()], 3)
+      );
+      return {
+        a,
+        b,
+        geo,
+        color,
+        t: Math.random(),
+        speed: 0.15 + Math.random() * 0.3,
+        ref: { current: null as THREE.Object3D | null },
+      };
+    });
+  }, [count]);
 
-  useFrame((state) => {
-    if (ref.current) ref.current.uniforms.uTime.value = state.clock.elapsedTime;
+  useFrame((_, dt) => {
+    traces.forEach((tr) => {
+      tr.t = (tr.t + dt * tr.speed) % 1;
+      if (tr.ref.current) tr.ref.current.position.lerpVectors(tr.a, tr.b, tr.t);
+    });
   });
 
   return (
-    <points geometry={geo}>
-      <shaderMaterial
-        ref={ref}
-        vertexShader={particleVert}
-        fragmentShader={particleFrag}
-        transparent
-        depthWrite={false}
-        blending={THREE.AdditiveBlending}
-        uniforms={{
-          uTime: { value: 0 },
-          uSize: { value: 2.4 },
-          uSpread: { value: 1 },
-          uColorA: { value: new THREE.Color("#8ab4d8") },
-          uColorB: { value: new THREE.Color("#d4af6a") },
-        }}
-      />
-    </points>
+    <>
+      {traces.map((tr, i) => (
+        <group key={i}>
+          <lineSegments geometry={tr.geo}>
+            <lineBasicMaterial color={tr.color} transparent opacity={0.14} fog />
+          </lineSegments>
+          <mesh
+            ref={(el) => {
+              tr.ref.current = el;
+            }}
+          >
+            <sphereGeometry args={[0.05, 8, 8]} />
+            <meshStandardMaterial
+              color={tr.color}
+              emissive={tr.color}
+              emissiveIntensity={2.6}
+            />
+          </mesh>
+        </group>
+      ))}
+    </>
   );
 }
 
@@ -350,9 +321,9 @@ export default function World({ tier }: { tier: "low" | "high" }) {
       <ambientLight intensity={0.4} />
       <directionalLight position={[6, 10, 6]} intensity={0.55} color="#f4f2ee" />
       <pointLight ref={point} position={[0, 0, 4]} intensity={0.6} color="#8ab4d8" />
-      <Nebula tier={tier} />
+      <BlueprintGrid />
+      <CircuitTraces tier={tier} />
       <SystemField tier={tier} />
-      <StarField tier={tier} />
       <Environments tier={tier} />
     </>
   );
