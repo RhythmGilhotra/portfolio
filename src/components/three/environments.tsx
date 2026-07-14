@@ -150,70 +150,102 @@ function Arrival() {
   );
 }
 
-/* ---------- 01 · Origins (observatory lattice) ---------- */
+/* ---------- 01 · Origins (compute lattice — the kernel) ---------- */
+// A 3D voxel grid of nodes wired by traces: memory / compute as architecture.
 function Origins() {
-  const spin = useSpin(0.08);
-  const dots = useMemo(() => {
-    const arr: [number, number, number][] = [];
-    const N = 42;
-    for (let i = 0; i < N; i++) {
-      const phi = Math.acos(1 - (2 * (i + 0.5)) / N);
-      const theta = Math.PI * (1 + Math.sqrt(5)) * i;
-      const r = 3.2;
-      arr.push([
-        r * Math.sin(phi) * Math.cos(theta),
-        r * Math.cos(phi),
-        r * Math.sin(phi) * Math.sin(theta),
-      ]);
-    }
-    return arr;
+  const spin = useSpin(0.1);
+  const { nodes, lines } = useMemo(() => {
+    const g = 3; // 3x3x3 grid
+    const s = 1.5;
+    const pts: [number, number, number][] = [];
+    for (let x = -g; x <= g; x += g)
+      for (let y = -g; y <= g; y += g)
+        for (let z = -g; z <= g; z += g) pts.push([(x / g) * s, (y / g) * s, (z / g) * s]);
+    const seg: number[] = [];
+    for (let i = 0; i < pts.length; i++)
+      for (let j = i + 1; j < pts.length; j++) {
+        const d = Math.hypot(
+          pts[i][0] - pts[j][0],
+          pts[i][1] - pts[j][1],
+          pts[i][2] - pts[j][2]
+        );
+        if (d <= s + 0.01) seg.push(...pts[i], ...pts[j]);
+      }
+    const lg = new THREE.BufferGeometry();
+    lg.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
+    return { nodes: pts, lines: lg };
   }, []);
+
+  const pulse = useRef<THREE.Group>(null);
+  useFrame((st) => {
+    if (pulse.current) {
+      const k = 1 + Math.sin(st.clock.elapsedTime * 1.5) * 0.04;
+      pulse.current.scale.setScalar(k);
+    }
+  });
+
   return (
     <group position={[0, 0, -CHAPTER_GAP]}>
       <group ref={spin}>
-        <Wire color={ICE} opacity={0.22}>
-          <sphereGeometry args={[3.2, 20, 20]} />
+        <group ref={pulse}>
+          {nodes.map((p, i) => (
+            <mesh key={i} position={p}>
+              <boxGeometry args={[0.12, 0.12, 0.12]} />
+              <meshStandardMaterial
+                color={MIST}
+                emissive={i % 4 === 0 ? GOLD : ICE}
+                emissiveIntensity={i % 4 === 0 ? 1.6 : 0.9}
+              />
+            </mesh>
+          ))}
+          <lineSegments geometry={lines}>
+            <lineBasicMaterial color={ICE} transparent opacity={0.28} fog />
+          </lineSegments>
+        </group>
+        <Wire color={MIST} opacity={0.12}>
+          <boxGeometry args={[3.3, 3.3, 3.3]} />
         </Wire>
-        {dots.map((p, i) => (
-          <mesh key={i} position={p}>
-            <sphereGeometry args={[0.04, 8, 8]} />
-            <meshStandardMaterial
-              color={MIST}
-              emissive={i % 5 === 0 ? GOLD : ICE}
-              emissiveIntensity={i % 5 === 0 ? 1.3 : 0.8}
-            />
-          </mesh>
-        ))}
       </group>
     </group>
   );
 }
 
-/* ---------- 02 · The Ascent (three peaks) ---------- */
-function Peak({
-  x,
-  h,
-  color,
-}: {
-  x: number;
-  h: number;
-  color: string;
-}) {
+/* ---------- 02 · The Stack (server racks rising) ---------- */
+// Each role is a taller rack of stacked units with lit status strips — the
+// tech stack growing layer by layer.
+function Rack({ x, units, color }: { x: number; units: number; color: string }) {
+  const uh = 0.5; // unit height
+  const gap = 0.08;
+  const rows = Array.from({ length: units });
   return (
-    <group position={[x, -2.2, 0]}>
-      <mesh position={[0, h / 2, 0]}>
-        <coneGeometry args={[h * 0.5, h, 4]} />
-        <meshStandardMaterial
-          color="#0c0e16"
-          emissive={color}
-          emissiveIntensity={0.25}
-          flatShading
-          roughness={0.9}
-        />
-      </mesh>
-      <mesh position={[0, h, 0]}>
-        <octahedronGeometry args={[0.22, 0]} />
-        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.4} />
+    <group position={[x, -2.4, 0]}>
+      {rows.map((_, i) => {
+        const y = i * (uh + gap) + uh / 2;
+        return (
+          <group key={i} position={[0, y, 0]}>
+            <mesh>
+              <boxGeometry args={[1.3, uh, 1.0]} />
+              <meshStandardMaterial
+                color="#0c0e16"
+                emissive={color}
+                emissiveIntensity={0.15}
+                metalness={0.5}
+                roughness={0.5}
+                flatShading
+              />
+            </mesh>
+            {/* lit status strip on the front face */}
+            <mesh position={[0.66, 0, 0.4]}>
+              <boxGeometry args={[0.02, uh * 0.6, 0.12]} />
+              <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.2} />
+            </mesh>
+          </group>
+        );
+      })}
+      {/* beacon on top unit */}
+      <mesh position={[0, units * (uh + gap) + 0.15, 0]}>
+        <boxGeometry args={[0.16, 0.16, 0.16]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.6} />
       </mesh>
     </group>
   );
@@ -221,9 +253,9 @@ function Peak({
 function Ascent() {
   return (
     <group position={[0, 0, -CHAPTER_GAP * 2]}>
-      <Peak x={-3.4} h={2.6} color={ICE} />
-      <Peak x={0} h={4.2} color={MIST} />
-      <Peak x={3.6} h={6.2} color={GOLD} />
+      <Rack x={-3.6} units={3} color={ICE} />
+      <Rack x={0} units={5} color={MIST} />
+      <Rack x={3.6} units={8} color={GOLD} />
     </group>
   );
 }
@@ -308,36 +340,47 @@ function CommandCenter() {
   );
 }
 
-/* ---------- 04 · Artifacts (floating structures) ---------- */
-function Island({
-  x,
-  color,
-}: {
-  x: number;
-  color: string;
-}) {
+/* ---------- 04 · Artifacts (deployed system modules) ---------- */
+// Floating compute modules: a chassis with a glowing core and an orbiting
+// data ring — self-contained systems humming in space.
+function Module({ x, color }: { x: number; color: string }) {
   const ref = useRef<THREE.Group>(null);
-  useFrame((s) => {
-    if (ref.current)
+  const ring = useRef<THREE.Group>(null);
+  useFrame((s, dt) => {
+    if (ref.current) {
       ref.current.position.y = Math.sin(s.clock.elapsedTime * 0.6 + x) * 0.4;
+      ref.current.rotation.y += dt * 0.12;
+    }
+    if (ring.current) ring.current.rotation.x += dt * 0.6;
   });
   return (
     <group ref={ref} position={[x, 0, 0]}>
-      <mesh position={[0, -0.6, 0]}>
-        <coneGeometry args={[1.1, 1.6, 6]} />
-        <meshStandardMaterial color="#0c0e16" emissive={color} emissiveIntensity={0.3} flatShading />
+      {/* chassis */}
+      <mesh>
+        <boxGeometry args={[1.2, 1.2, 1.2]} />
+        <meshStandardMaterial
+          color="#0c0e16"
+          emissive={color}
+          emissiveIntensity={0.25}
+          metalness={0.6}
+          roughness={0.4}
+          flatShading
+        />
       </mesh>
-      <mesh position={[0, 0.2, 0]}>
-        <cylinderGeometry args={[1.1, 1.1, 0.25, 6]} />
-        <meshStandardMaterial color="#12141d" emissive={color} emissiveIntensity={0.4} flatShading />
-      </mesh>
-      <group position={[0, 0.9, 0]}>
-        <Wire color={color} opacity={0.6}>
-          <boxGeometry args={[0.7, 0.9, 0.7]} />
-        </Wire>
-        <Glow color={color} intensity={2.2}>
-          <boxGeometry args={[0.18, 0.18, 0.18]} />
-        </Glow>
+      <lineSegments>
+        <edgesGeometry args={[new THREE.BoxGeometry(1.2, 1.2, 1.2)]} />
+        <lineBasicMaterial color={color} transparent opacity={0.6} />
+      </lineSegments>
+      {/* exposed glowing core */}
+      <Glow color={color} intensity={2.4}>
+        <icosahedronGeometry args={[0.3, 0]} />
+      </Glow>
+      {/* orbiting data ring */}
+      <group ref={ring}>
+        <mesh rotation={[Math.PI / 2, 0, 0]}>
+          <torusGeometry args={[1.05, 0.012, 8, 100]} />
+          <meshBasicMaterial color={color} transparent opacity={0.7} />
+        </mesh>
       </group>
     </group>
   );
@@ -345,8 +388,8 @@ function Island({
 function Artifacts() {
   return (
     <group position={[0, 0, -CHAPTER_GAP * 4]}>
-      <Island x={-2.6} color={ICE} />
-      <Island x={2.6} color={GOLD} />
+      <Module x={-2.7} color={ICE} />
+      <Module x={2.7} color={GOLD} />
     </group>
   );
 }
@@ -405,32 +448,45 @@ function Constellation() {
   );
 }
 
-/* ---------- 06 · Monuments (crystalline awards) ---------- */
-function Shard({ x, h, color }: { x: number; h: number; color: string }) {
-  const ref = useRef<THREE.Mesh>(null);
+/* ---------- 06 · Monuments (circuit obelisks) ---------- */
+// Tall edge-lit monoliths, each carrying a glowing microchip — achievements
+// etched into silicon.
+function Obelisk({ x, h, color }: { x: number; h: number; color: string }) {
+  const ref = useRef<THREE.Group>(null);
   useFrame((_, dt) => {
-    if (ref.current) ref.current.rotation.y += dt * 0.3;
+    if (ref.current) ref.current.rotation.y += dt * 0.25;
   });
+  const geo = useMemo(() => new THREE.BoxGeometry(0.7, h, 0.4), [h]);
   return (
-    <mesh ref={ref} position={[x, 0, 0]}>
-      <octahedronGeometry args={[h, 0]} />
-      <meshStandardMaterial
-        color={color}
-        emissive={color}
-        emissiveIntensity={1.4}
-        roughness={0.1}
-        metalness={0.4}
-        flatShading
-      />
-    </mesh>
+    <group ref={ref} position={[x, 0, 0]}>
+      <mesh geometry={geo}>
+        <meshStandardMaterial
+          color="#0b0d15"
+          emissive={color}
+          emissiveIntensity={0.3}
+          metalness={0.6}
+          roughness={0.3}
+          flatShading
+        />
+      </mesh>
+      <lineSegments>
+        <edgesGeometry args={[geo]} />
+        <lineBasicMaterial color={color} transparent opacity={0.85} />
+      </lineSegments>
+      {/* embedded chip */}
+      <mesh position={[0, 0, 0.21]}>
+        <boxGeometry args={[0.34, 0.34, 0.04]} />
+        <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.4} />
+      </mesh>
+    </group>
   );
 }
 function Monuments() {
   return (
     <group position={[0, 0, -CHAPTER_GAP * 6]}>
-      <Shard x={-3} h={1.1} color={ICE} />
-      <Shard x={0} h={1.7} color={GOLD} />
-      <Shard x={3} h={1.1} color={ICE} />
+      <Obelisk x={-3} h={2.2} color={ICE} />
+      <Obelisk x={0} h={3.4} color={GOLD} />
+      <Obelisk x={3} h={2.2} color={ICE} />
     </group>
   );
 }

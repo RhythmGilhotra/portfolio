@@ -2,13 +2,13 @@
 // Rewritten as story beats — never copied resume prose.
 
 export const CHAPTERS = [
-  "Arrival",
-  "Origins",
-  "The Ascent",
-  "The Command Center",
-  "Artifacts",
-  "Constellation",
-  "Monuments",
+  "Boot",
+  "Kernel",
+  "The Stack",
+  "Command Center",
+  "Systems",
+  "Network",
+  "Milestones",
   "Transmission",
 ] as const;
 
@@ -25,7 +25,7 @@ export const identity = {
 };
 
 export const origins = {
-  kicker: "Chapter 01 · Origins",
+  kicker: "Chapter 01 · The Kernel",
   title: "Every system begins as a question.",
   body: "Thapar Institute of Engineering & Technology, 2017–2021. Computer Engineering. Four years spent taking apart distributed systems, operating systems, networks and databases — and learning that elegance is a property of constraints, not decoration.",
   facts: [
@@ -39,29 +39,29 @@ export const origins = {
 };
 
 export const ascent = {
-  kicker: "Chapter 02 · The Ascent",
-  title: "One company. Three altitudes.",
+  kicker: "Chapter 02 · The Stack",
+  title: "One company. Three layers of the stack.",
   intro:
-    "Five years inside American Express, climbing the same mountain from different faces — intern to engineer to the person others rope up with.",
+    "Five years inside American Express, working up the same stack from different layers — intern to engineer to the person others deploy behind.",
   peaks: [
     {
       role: "Engineering Intern",
       period: "Jan — Jun 2021",
-      alt: "Base camp",
+      alt: "L1 · Foundation",
       story:
         "Took legacy reporting and made it breathe in real time. Streaming risk dashboards, 60% fresher data, query runtimes cut in half, and validation that removed humans from the QA loop.",
     },
     {
       role: "Engineer I",
       period: "Aug 2021 — May 2023",
-      alt: "The climb",
+      alt: "L2 · Services",
       story:
         "Distributed ETL at scale: a 6-hour compute grind compressed to 90 minutes, quarter-close accelerated by 2+ days. Credit-risk APIs wired into underwriting — early delinquencies down 12%. Pipelines that watch themselves: SLAs, retries, failover, 99.9% uptime.",
     },
     {
       role: "Engineer II",
       period: "May 2023 — Present",
-      alt: "The summit ridge",
+      alt: "L3 · Platform",
       story:
         "Architect of a real-time transaction system on GCP — 30M+ events a day, latency collapsed from 15 seconds to under 5. A/B infrastructure with telemetry, feature flags, automated rollback. Release velocity tripled with zero Sev-1s at 99.99% uptime. Mentor to 4+ engineers.",
     },
@@ -84,8 +84,8 @@ export const commandCenter = {
 };
 
 export const artifacts = {
-  kicker: "Chapter 04 · Artifacts",
-  title: "Things built with intent.",
+  kicker: "Chapter 04 · Systems",
+  title: "Systems built with intent.",
   projects: [
     {
       name: "Distributed Network Intrusion Detection",
@@ -105,8 +105,8 @@ export const artifacts = {
 };
 
 export const constellation = {
-  kicker: "Chapter 05 · Constellation",
-  title: "A sky of tools, held together by systems thinking.",
+  kicker: "Chapter 05 · The Network",
+  title: "A live graph of tools, wired by systems thinking.",
   clusters: [
     { name: "Languages", stars: ["Python", "Java", "Kotlin", "SQL", "Bash"] },
     {
@@ -129,8 +129,8 @@ export const constellation = {
 };
 
 export const monuments = {
-  kicker: "Chapter 06 · Monuments",
-  title: "Marks left on the landscape.",
+  kicker: "Chapter 06 · Milestones",
+  title: "Achievements etched into silicon.",
   awards: [
     {
       name: "Star Award",
