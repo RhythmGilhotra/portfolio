@@ -162,69 +162,132 @@ function Nebula({ tier }: { tier: "low" | "high" }) {
   );
 }
 
-// Dark floating monoliths — abstract architecture that parallaxes past as you
-// travel, giving the void scale and depth.
-function Monoliths({ tier }: { tier: "low" | "high" }) {
-  const count = tier === "high" ? 18 : 9;
-  const slabs = useMemo(() => {
-    const arr: {
-      pos: [number, number, number];
-      rot: [number, number, number];
-      size: [number, number, number];
-      edge: string;
-    }[] = [];
-    for (let i = 0; i < count; i++) {
-      const side = i % 2 === 0 ? -1 : 1;
-      arr.push({
-        pos: [
-          side * (7 + Math.random() * 9),
-          (Math.random() - 0.5) * 14,
-          4 - Math.random() * CHAPTER_GAP * 7,
-        ],
-        rot: [
-          (Math.random() - 0.5) * 0.3,
-          (Math.random() - 0.5) * 0.6,
-          (Math.random() - 0.5) * 0.3,
-        ],
-        size: [
-          0.3 + Math.random() * 0.5,
-          4 + Math.random() * 7,
-          0.3 + Math.random() * 0.5,
-        ],
-        edge: Math.random() > 0.5 ? "#8ab4d8" : "#d4af6a",
-      });
-    }
-    return arr;
-  }, [count]);
+// A floating system-architecture diagram: service nodes wired by edges with
+// data packets flowing between them. Drifts in the deep background as depth.
+function SystemGraph({
+  position,
+  color,
+  scale,
+}: {
+  position: [number, number, number];
+  color: string;
+  scale: number;
+}) {
+  const spin = useRef<THREE.Group>(null);
+  const nodes = useMemo<THREE.Vector3[]>(() => {
+    const n = 3 + Math.floor(Math.random() * 3); // 3–5 nodes
+    return Array.from({ length: n }, () =>
+      new THREE.Vector3(
+        (Math.random() - 0.5) * 2.4,
+        (Math.random() - 0.5) * 1.8,
+        (Math.random() - 0.5) * 1.2
+      )
+    );
+  }, []);
 
-  const group = useRef<THREE.Group>(null);
-  useFrame((s) => {
-    if (!group.current) return;
-    group.current.children.forEach((m, i) => {
-      m.position.y += Math.sin(s.clock.elapsedTime * 0.2 + i) * 0.0015;
+  const { edges, lineGeo } = useMemo(() => {
+    const e: [number, number][] = [];
+    for (let i = 1; i < nodes.length; i++) e.push([i - 1, i]); // chain
+    if (nodes.length > 3) e.push([nodes.length - 1, 0]); // close loop
+    const seg: number[] = [];
+    e.forEach(([a, b]) => seg.push(...nodes[a].toArray(), ...nodes[b].toArray()));
+    const g = new THREE.BufferGeometry();
+    g.setAttribute("position", new THREE.Float32BufferAttribute(seg, 3));
+    return { edges: e, lineGeo: g };
+  }, [nodes]);
+
+  const packets = useMemo(
+    () =>
+      edges.slice(0, 2).map((e, i) => ({
+        edge: e,
+        t: Math.random(),
+        speed: 0.18 + Math.random() * 0.22,
+        ref: { current: null as THREE.Object3D | null },
+        key: i,
+      })),
+    [edges]
+  );
+
+  useFrame((s, dt) => {
+    if (spin.current) spin.current.rotation.y += dt * 0.06;
+    packets.forEach((p) => {
+      p.t = (p.t + dt * p.speed) % 1;
+      const a = nodes[p.edge[0]];
+      const b = nodes[p.edge[1]];
+      if (p.ref.current) p.ref.current.position.lerpVectors(a, b, p.t);
     });
   });
 
   return (
-    <group ref={group}>
-      {slabs.map((sl, i) => (
-        <group key={i} position={sl.pos} rotation={sl.rot}>
+    <group ref={spin} position={position} scale={scale}>
+      {/* edges */}
+      <lineSegments geometry={lineGeo}>
+        <lineBasicMaterial color={color} transparent opacity={0.32} fog />
+      </lineSegments>
+      {/* service nodes */}
+      {nodes.map((p, i) => (
+        <group key={i} position={p}>
           <mesh>
-            <boxGeometry args={sl.size} />
+            <boxGeometry args={[0.34, 0.24, 0.34]} />
             <meshStandardMaterial
               color="#0a0c14"
-              emissive={sl.edge}
-              emissiveIntensity={0.12}
-              roughness={0.6}
-              metalness={0.4}
+              emissive={color}
+              emissiveIntensity={0.35}
+              metalness={0.5}
+              roughness={0.4}
               flatShading
             />
           </mesh>
           <lineSegments>
-            <edgesGeometry args={[new THREE.BoxGeometry(...sl.size)]} />
-            <lineBasicMaterial color={sl.edge} transparent opacity={0.18} fog />
+            <edgesGeometry args={[new THREE.BoxGeometry(0.34, 0.24, 0.34)]} />
+            <lineBasicMaterial color={color} transparent opacity={0.55} fog />
           </lineSegments>
         </group>
+      ))}
+      {/* flowing data packets */}
+      {packets.map((p) => (
+        <mesh
+          key={p.key}
+          ref={(el) => {
+            p.ref.current = el;
+          }}
+        >
+          <sphereGeometry args={[0.06, 8, 8]} />
+          <meshStandardMaterial color={color} emissive={color} emissiveIntensity={2.4} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// Scatters system-architecture graphs through the corridor as background depth.
+function SystemField({ tier }: { tier: "low" | "high" }) {
+  const count = tier === "high" ? 12 : 6;
+  const graphs = useMemo(
+    () =>
+      Array.from({ length: count }, (_, i) => ({
+        position: [
+          (i % 2 === 0 ? -1 : 1) * (6.5 + Math.random() * 8),
+          (Math.random() - 0.5) * 12,
+          3 - Math.random() * CHAPTER_GAP * 7,
+        ] as [number, number, number],
+        color: Math.random() > 0.5 ? "#8ab4d8" : "#d4af6a",
+        scale: 1 + Math.random() * 1.4,
+        key: i,
+      })),
+    [count]
+  );
+  const drift = useRef<THREE.Group>(null);
+  useFrame((s) => {
+    if (!drift.current) return;
+    drift.current.children.forEach((m, i) => {
+      m.position.y += Math.sin(s.clock.elapsedTime * 0.15 + i) * 0.0012;
+    });
+  });
+  return (
+    <group ref={drift}>
+      {graphs.map((g) => (
+        <SystemGraph key={g.key} position={g.position} color={g.color} scale={g.scale} />
       ))}
     </group>
   );
@@ -288,7 +351,7 @@ export default function World({ tier }: { tier: "low" | "high" }) {
       <directionalLight position={[6, 10, 6]} intensity={0.55} color="#f4f2ee" />
       <pointLight ref={point} position={[0, 0, 4]} intensity={0.6} color="#8ab4d8" />
       <Nebula tier={tier} />
-      <Monoliths tier={tier} />
+      <SystemField tier={tier} />
       <StarField tier={tier} />
       <Environments tier={tier} />
     </>
