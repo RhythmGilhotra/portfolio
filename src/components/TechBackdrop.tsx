@@ -46,7 +46,7 @@ function CircuitField() {
 
   return (
     <svg
-      className="absolute inset-0 h-full w-full opacity-[0.075]"
+      className="absolute inset-0 h-full w-full opacity-[0.18]"
       viewBox={`0 0 ${W} ${H}`}
       preserveAspectRatio="xMidYMid slice"
       fill="none"
@@ -70,17 +70,17 @@ function CircuitField() {
               key={i}
               d={`M${a.x} ${a.y} H${b.x} V${b.y}`}
               stroke={i % 3 === 0 ? GOLD : ICE}
-              strokeWidth={0.7}
+              strokeWidth={1.2}
             />
           );
         })}
         {nodes.map((n, i) => (
           <rect
             key={i}
-            x={n.x - 2.4}
-            y={n.y - 2.4}
-            width={4.8}
-            height={4.8}
+            x={n.x - 3.2}
+            y={n.y - 3.2}
+            width={6.4}
+            height={6.4}
             fill={n.gold ? GOLD : ICE}
             className="bd-pulse"
             style={{ animationDelay: `${(i % 7) * 0.7}s` }}
@@ -104,7 +104,7 @@ function CodeFragments() {
       {frags.map((f, i) => (
         <pre
           key={i}
-          className={`pointer-events-none absolute hidden select-none whitespace-pre font-mono text-[11px] leading-5 opacity-[0.07] lg:block ${f.cls} ${
+          className={`pointer-events-none absolute hidden select-none whitespace-pre font-mono text-[11px] leading-5 opacity-[0.14] lg:block ${f.cls} ${
             i % 2 ? "text-gold" : "text-ice"
           }`}
           aria-hidden
@@ -136,7 +136,7 @@ function NeuralNet() {
   }
   return (
     <svg
-      className="pointer-events-none absolute -left-6 -top-6 h-[240px] w-[260px] opacity-[0.13] md:h-[300px] md:w-[320px]"
+      className="pointer-events-none absolute -left-6 -top-6 h-[240px] w-[260px] opacity-[0.22] md:h-[300px] md:w-[320px]"
       viewBox="0 0 260 230"
       fill="none"
       aria-hidden
@@ -182,7 +182,7 @@ function CodeSnippet() {
   ];
   return (
     <pre
-      className="pointer-events-none absolute right-4 top-16 hidden select-none font-mono text-[11px] leading-5 text-ice opacity-[0.12] md:block"
+      className="pointer-events-none absolute right-4 top-16 hidden select-none font-mono text-[11px] leading-5 text-ice opacity-[0.2] md:block"
       aria-hidden
     >
       {lines.join("\n")}
@@ -201,7 +201,7 @@ function Database() {
   );
   return (
     <svg
-      className="pointer-events-none absolute -bottom-4 left-2 h-[120px] w-[160px] opacity-[0.12] md:h-[150px] md:w-[200px]"
+      className="pointer-events-none absolute -bottom-4 left-2 h-[120px] w-[160px] opacity-[0.2] md:h-[150px] md:w-[200px]"
       viewBox="0 0 160 90"
       aria-hidden
     >
@@ -224,7 +224,7 @@ function ApiFlow() {
   );
   return (
     <svg
-      className="pointer-events-none absolute -bottom-2 right-2 hidden h-[130px] w-[300px] opacity-[0.13] md:block"
+      className="pointer-events-none absolute -bottom-2 right-2 hidden h-[130px] w-[300px] opacity-[0.22] md:block"
       viewBox="0 0 300 70"
       fill="none"
       aria-hidden
@@ -254,7 +254,7 @@ function DsaTree() {
   const n = (x: number, y: number, c = ICE) => <circle cx={x} cy={y} r={3.2} fill={c} />;
   return (
     <svg
-      className="pointer-events-none absolute left-0 top-[18%] hidden h-[150px] w-[110px] opacity-[0.10] lg:block"
+      className="pointer-events-none absolute left-0 top-[18%] hidden h-[150px] w-[110px] opacity-[0.2] lg:block"
       viewBox="0 0 120 160"
       aria-hidden
     >
@@ -282,7 +282,7 @@ export default function TechBackdrop() {
       <div className="absolute inset-0 bg-void" />
       {/* faint blueprint grid */}
       <div
-        className="absolute inset-0 opacity-[0.05]"
+        className="absolute inset-0 opacity-[0.2]"
         style={{
           backgroundImage:
             "linear-gradient(rgba(138,180,216,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(138,180,216,0.6) 1px, transparent 1px)",
@@ -299,7 +299,7 @@ export default function TechBackdrop() {
       <ApiFlow />
       <DsaTree />
       {/* soft vignette so the centre stays readable */}
-      <div className="absolute inset-0 bg-[radial-gradient(115%_85%_at_50%_42%,transparent_38%,rgba(5,5,8,0.7)_100%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_42%,transparent_48%,rgba(5,5,8,0.42)_100%)]" />
     </div>
   );
 }
