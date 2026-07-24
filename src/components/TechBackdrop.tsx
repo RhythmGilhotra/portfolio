@@ -20,12 +20,51 @@ function rng(seed: number) {
   };
 }
 
+/* ---- Skill tags — every technology from the résumé, drifting in the margins ---- */
+const SKILLS = [
+  "Python", "Java", "Kotlin", "SQL", "Bash", "Spring Boot", "FastAPI", "Flask",
+  "gRPC", "TensorFlow", "GCP", "BigQuery", "Dataflow", "Pub/Sub", "Kubernetes",
+  "Docker", "Terraform", "Airflow", "Spark", "Kafka", "Hive", "Looker",
+  "Grafana", "Prometheus", "Git", "GitHub Actions", "CI/CD", "Cloud Build",
+  "REST", "ETL / ELT", "Anomaly Detection", "A/B Testing",
+];
+
+function SkillTags() {
+  const r = rng(41);
+  // keep tags in the left / right margins so the centre column stays clean
+  const tags = SKILLS.map((name, i) => {
+    const left = i % 2 === 0;
+    const x = left ? 1.5 + r() * 15 : 82 + r() * 15.5;
+    const y = 3 + (i / SKILLS.length) * 93 + (r() - 0.5) * 5;
+    return { name, x, y, gold: i % 3 === 0, delay: (i % 9) * 0.55 };
+  });
+  return (
+    <div className="pointer-events-none absolute inset-0 hidden sm:block">
+      {tags.map((t, i) => (
+        <span
+          key={i}
+          className={`bd-float absolute font-mono text-[10px] tracking-wide lg:text-[11px] ${
+            t.gold ? "text-gold" : "text-ice"
+          }`}
+          style={{
+            left: `${t.x}%`,
+            top: `${t.y}%`,
+            animationDelay: `${t.delay}s`,
+          }}
+        >
+          {t.name}
+        </span>
+      ))}
+    </div>
+  );
+}
+
 /* ---- Full-viewport circuit / network field ---- */
 function CircuitField() {
   const W = 1440;
   const H = 900;
   const r = rng(97);
-  const nodes = Array.from({ length: 46 }, () => ({
+  const nodes = Array.from({ length: 64 }, () => ({
     x: Math.round(r() * W),
     y: Math.round(r() * H),
     gold: r() > 0.78,
@@ -291,6 +330,7 @@ export default function TechBackdrop() {
       />
       {/* whole-surface circuit / network field */}
       <CircuitField />
+      <SkillTags />
       <CodeFragments />
       {/* labelled corner accents */}
       <NeuralNet />

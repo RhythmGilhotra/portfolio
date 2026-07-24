@@ -113,8 +113,15 @@ body {
 }
 .bd-packet { animation: bdPacket 3.2s linear infinite; }
 
+@keyframes bdFloat {
+  0%, 100% { transform: translateY(0); opacity: 0.15; }
+  50% { transform: translateY(-7px); opacity: 0.28; }
+}
+.bd-float { animation: bdFloat 7s ease-in-out infinite; }
+
 @media (prefers-reduced-motion: reduce) {
   .float-slow,
   .bd-pulse,
-  .bd-packet { animation: none; }
+  .bd-packet,
+  .bd-float { animation: none; }
 }
