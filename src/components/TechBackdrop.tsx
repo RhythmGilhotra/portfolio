@@ -1,5 +1,8 @@
 "use client";
 
+import { useEffect, useRef } from "react";
+import { scrollState } from "@/lib/scrollState";
+
 // Clean, content-first backdrop whose whole surface reads as engineering:
 // a subtle full-viewport circuit / service-network field, scattered code
 // fragments, and labelled corner motifs drawn from the résumé (AI/ML,
@@ -315,13 +318,40 @@ function DsaTree() {
 }
 
 export default function TechBackdrop() {
+  const grid = useRef<HTMLDivElement>(null);
+  const field = useRef<HTMLDivElement>(null);
+  const tags = useRef<HTMLDivElement>(null);
+  const accents = useRef<HTMLDivElement>(null);
+
+  // Scroll-reactive parallax: each layer drifts at its own depth off the Lenis
+  // scroll progress, so the whole background moves as you travel. Direct DOM
+  // writes in rAF — no React re-renders.
+  useEffect(() => {
+    let raf = 0;
+    const loop = () => {
+      const p = scrollState.progress || 0;
+      const v = scrollState.velocity || 0;
+      const vx = Math.max(-36, Math.min(36, v * 0.45));
+      if (grid.current) grid.current.style.backgroundPositionY = `${p * 320}px`;
+      if (field.current) field.current.style.transform = `translateY(${p * 150}px)`;
+      if (tags.current)
+        tags.current.style.transform = `translate(${vx}px, ${p * -240}px)`;
+      if (accents.current)
+        accents.current.style.transform = `translateY(${p * -90}px)`;
+      raf = requestAnimationFrame(loop);
+    };
+    raf = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(raf);
+  }, []);
+
   return (
     <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
       {/* neutral canvas */}
       <div className="absolute inset-0 bg-void" />
-      {/* faint blueprint grid */}
+      {/* faint blueprint grid (pans with scroll) */}
       <div
-        className="absolute inset-0 opacity-[0.2]"
+        ref={grid}
+        className="absolute inset-0 opacity-[0.16]"
         style={{
           backgroundImage:
             "linear-gradient(rgba(138,180,216,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(138,180,216,0.6) 1px, transparent 1px)",
@@ -329,15 +359,22 @@ export default function TechBackdrop() {
         }}
       />
       {/* whole-surface circuit / network field */}
-      <CircuitField />
-      <SkillTags />
-      <CodeFragments />
+      <div ref={field} className="absolute inset-0 will-change-transform">
+        <CircuitField />
+      </div>
+      {/* skill tags + code fragments (fastest parallax + velocity nudge) */}
+      <div ref={tags} className="absolute inset-0 will-change-transform">
+        <SkillTags />
+        <CodeFragments />
+      </div>
       {/* labelled corner accents */}
-      <NeuralNet />
-      <CodeSnippet />
-      <Database />
-      <ApiFlow />
-      <DsaTree />
+      <div ref={accents} className="absolute inset-0 will-change-transform">
+        <NeuralNet />
+        <CodeSnippet />
+        <Database />
+        <ApiFlow />
+        <DsaTree />
+      </div>
       {/* soft vignette so the centre stays readable */}
       <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_42%,transparent_48%,rgba(5,5,8,0.42)_100%)]" />
     </div>
