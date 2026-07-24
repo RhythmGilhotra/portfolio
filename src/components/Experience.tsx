@@ -1,14 +1,12 @@
 "use client";
 
 import { useEffect, useRef, useState, useCallback } from "react";
-import dynamic from "next/dynamic";
 import Lenis from "lenis";
 import { scrollState } from "@/lib/scrollState";
 import Overlay from "@/components/Overlay";
 import Hud from "@/components/Hud";
 import Terminal from "@/components/Terminal";
-
-const Scene = dynamic(() => import("@/components/Scene"), { ssr: false });
+import TechBackdrop from "@/components/TechBackdrop";
 
 export default function Experience() {
   const lenisRef = useRef<Lenis | null>(null);
@@ -89,9 +87,9 @@ export default function Experience() {
 
   return (
     <main className="relative">
-      {/* fixed 3D universe */}
+      {/* fixed clean backdrop with subtle tech motifs */}
       <div className="fixed inset-0 z-0">
-        <Scene />
+        <TechBackdrop />
       </div>
 
       {/* scrollable narrative */}
