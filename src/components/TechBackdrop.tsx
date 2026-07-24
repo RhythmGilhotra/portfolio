@@ -1,12 +1,120 @@
 "use client";
 
-// Clean, content-first backdrop. A near-black canvas with subtle, edge-anchored
-// technology motifs drawn from the résumé (AI/ML, Java/Spring Boot, Python,
-// REST APIs, databases, data pipelines, DSA, cloud). Everything sits at
-// 5–14% opacity around the corners/edges; the centre stays clear for content.
+// Clean, content-first backdrop whose whole surface reads as engineering:
+// a subtle full-viewport circuit / service-network field, scattered code
+// fragments, and labelled corner motifs drawn from the résumé (AI/ML,
+// Java/Spring Boot, Python, REST APIs, databases, data pipelines, DSA, cloud).
+// Everything sits at 5–14% opacity; a soft centre mask keeps content clean.
 
 const ICE = "#8ab4d8";
 const GOLD = "#d4af6a";
+
+// Deterministic PRNG so server and client render identical markup (no
+// hydration mismatch) while still looking scattered.
+function rng(seed: number) {
+  return () => {
+    seed = (seed + 0x6d2b79f5) | 0;
+    let t = Math.imul(seed ^ (seed >>> 15), 1 | seed);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+/* ---- Full-viewport circuit / network field ---- */
+function CircuitField() {
+  const W = 1440;
+  const H = 900;
+  const r = rng(97);
+  const nodes = Array.from({ length: 46 }, () => ({
+    x: Math.round(r() * W),
+    y: Math.round(r() * H),
+    gold: r() > 0.78,
+    d: 0.5 + r() * 1.6,
+  }));
+  // connect each node to its 2 nearest neighbours as right-angle traces
+  const edges: { a: number; b: number }[] = [];
+  nodes.forEach((n, i) => {
+    const near = nodes
+      .map((m, j) => ({ j, d: (m.x - n.x) ** 2 + (m.y - n.y) ** 2 }))
+      .filter((o) => o.j !== i)
+      .sort((p, q) => p.d - q.d)
+      .slice(0, 2);
+    near.forEach((o) => {
+      if (o.j > i) edges.push({ a: i, b: o.j });
+    });
+  });
+
+  return (
+    <svg
+      className="absolute inset-0 h-full w-full opacity-[0.075]"
+      viewBox={`0 0 ${W} ${H}`}
+      preserveAspectRatio="xMidYMid slice"
+      fill="none"
+      aria-hidden
+    >
+      <defs>
+        <radialGradient id="bd-clear" cx="50%" cy="42%" r="70%">
+          <stop offset="30%" stopColor="black" stopOpacity="0.25" />
+          <stop offset="100%" stopColor="white" />
+        </radialGradient>
+        <mask id="bd-mask">
+          <rect width={W} height={H} fill="url(#bd-clear)" />
+        </mask>
+      </defs>
+      <g mask="url(#bd-mask)">
+        {edges.map((e, i) => {
+          const a = nodes[e.a];
+          const b = nodes[e.b];
+          return (
+            <path
+              key={i}
+              d={`M${a.x} ${a.y} H${b.x} V${b.y}`}
+              stroke={i % 3 === 0 ? GOLD : ICE}
+              strokeWidth={0.7}
+            />
+          );
+        })}
+        {nodes.map((n, i) => (
+          <rect
+            key={i}
+            x={n.x - 2.4}
+            y={n.y - 2.4}
+            width={4.8}
+            height={4.8}
+            fill={n.gold ? GOLD : ICE}
+            className="bd-pulse"
+            style={{ animationDelay: `${(i % 7) * 0.7}s` }}
+          />
+        ))}
+      </g>
+    </svg>
+  );
+}
+
+/* ---- Scattered code fragments (Java / Python / SQL) ---- */
+function CodeFragments() {
+  const frags: { text: string; cls: string }[] = [
+    { text: "def train(model, data):", cls: "left-[6%] top-[30%]" },
+    { text: "SELECT * FROM txns\n WHERE risk > .9;", cls: "right-[7%] top-[44%]" },
+    { text: "kafka.consume(topic)\n  .map(infer)", cls: "left-[9%] top-[62%]" },
+    { text: "@Bean\nDataSource ds() {…}", cls: "right-[10%] bottom-[26%]" },
+  ];
+  return (
+    <>
+      {frags.map((f, i) => (
+        <pre
+          key={i}
+          className={`pointer-events-none absolute hidden select-none whitespace-pre font-mono text-[11px] leading-5 opacity-[0.07] lg:block ${f.cls} ${
+            i % 2 ? "text-gold" : "text-ice"
+          }`}
+          aria-hidden
+        >
+          {f.text}
+        </pre>
+      ))}
+    </>
+  );
+}
 
 /* ---- AI / ML — neural network (top-left) ---- */
 function NeuralNet() {
@@ -28,7 +136,7 @@ function NeuralNet() {
   }
   return (
     <svg
-      className="pointer-events-none absolute -left-6 -top-6 h-[240px] w-[260px] opacity-[0.11] md:h-[300px] md:w-[320px]"
+      className="pointer-events-none absolute -left-6 -top-6 h-[240px] w-[260px] opacity-[0.13] md:h-[300px] md:w-[320px]"
       viewBox="0 0 260 230"
       fill="none"
       aria-hidden
@@ -59,13 +167,13 @@ function NeuralNet() {
   );
 }
 
-/* ---- Java / Spring Boot / Python — code snippet (top-right) ---- */
+/* ---- Java / Spring Boot — code snippet (top-right) ---- */
 function CodeSnippet() {
   const lines = [
     "@RestController",
     '@RequestMapping("/api/v1")',
     "class RiskService {",
-    "  @GetMapping(\"/score\")",
+    '  @GetMapping("/score")',
     "  Mono<Score> score(Txn t) {",
     "    return pipeline.stream(t)",
     "      .map(model::infer);",
@@ -74,7 +182,7 @@ function CodeSnippet() {
   ];
   return (
     <pre
-      className="pointer-events-none absolute right-4 top-16 hidden select-none font-mono text-[11px] leading-5 text-ice opacity-[0.10] md:block"
+      className="pointer-events-none absolute right-4 top-16 hidden select-none font-mono text-[11px] leading-5 text-ice opacity-[0.12] md:block"
       aria-hidden
     >
       {lines.join("\n")}
@@ -93,7 +201,7 @@ function Database() {
   );
   return (
     <svg
-      className="pointer-events-none absolute -bottom-4 left-2 h-[120px] w-[160px] opacity-[0.10] md:h-[150px] md:w-[200px]"
+      className="pointer-events-none absolute -bottom-4 left-2 h-[120px] w-[160px] opacity-[0.12] md:h-[150px] md:w-[200px]"
       viewBox="0 0 160 90"
       aria-hidden
     >
@@ -116,7 +224,7 @@ function ApiFlow() {
   );
   return (
     <svg
-      className="pointer-events-none absolute -bottom-2 right-2 hidden h-[130px] w-[300px] opacity-[0.11] md:block"
+      className="pointer-events-none absolute -bottom-2 right-2 hidden h-[130px] w-[300px] opacity-[0.13] md:block"
       viewBox="0 0 300 70"
       fill="none"
       aria-hidden
@@ -129,26 +237,13 @@ function ApiFlow() {
         <g key={i}>
           <line x1={x} y1={31} x2={x + 38} y2={31} stroke={GOLD} strokeWidth={0.8} />
           <path d={`M${x + 34} 28 l4 3 -4 3`} stroke={GOLD} strokeWidth={0.8} />
-          <circle r={2} fill={GOLD} className="bd-packet" style={{ offsetPath: `path("M${x} 31 H${x + 38}")` } as React.CSSProperties} />
+          <circle
+            r={2}
+            fill={GOLD}
+            className="bd-packet"
+            style={{ offsetPath: `path("M${x} 31 H${x + 38}")` } as React.CSSProperties}
+          />
         </g>
-      ))}
-    </svg>
-  );
-}
-
-/* ---- Circuit traces along the right edge + data-flow dots ---- */
-function EdgeTraces() {
-  return (
-    <svg
-      className="pointer-events-none absolute right-0 top-1/2 hidden h-[420px] w-[70px] -translate-y-1/2 opacity-[0.09] lg:block"
-      viewBox="0 0 70 420"
-      fill="none"
-      aria-hidden
-    >
-      <path d="M70 40 H40 V120 H55 V210 H30 V300 H50 V380 H70" stroke={ICE} strokeWidth={0.8} />
-      <path d="M70 90 H20 V180 H45 V270 H15 V360" stroke={GOLD} strokeWidth={0.6} />
-      {[40, 120, 210, 300].map((y, i) => (
-        <circle key={i} cx={i % 2 ? 55 : 40} cy={y} r={2.5} fill={ICE} className="bd-pulse" style={{ animationDelay: `${i * 0.6}s` }} />
       ))}
     </svg>
   );
@@ -159,7 +254,7 @@ function DsaTree() {
   const n = (x: number, y: number, c = ICE) => <circle cx={x} cy={y} r={3.2} fill={c} />;
   return (
     <svg
-      className="pointer-events-none absolute left-0 top-1/2 hidden h-[160px] w-[120px] -translate-y-1/2 opacity-[0.08] lg:block"
+      className="pointer-events-none absolute left-0 top-[18%] hidden h-[150px] w-[110px] opacity-[0.10] lg:block"
       viewBox="0 0 120 160"
       aria-hidden
     >
@@ -182,32 +277,29 @@ function DsaTree() {
 
 export default function TechBackdrop() {
   return (
-    <div
-      className="pointer-events-none fixed inset-0 overflow-hidden"
-      aria-hidden
-    >
-      {/* neutral canvas with a soft vignette so edge motifs never fight content */}
+    <div className="pointer-events-none fixed inset-0 overflow-hidden" aria-hidden>
+      {/* neutral canvas */}
       <div className="absolute inset-0 bg-void" />
-      <div className="absolute inset-0 bg-[radial-gradient(120%_90%_at_50%_40%,transparent_35%,rgba(5,5,8,0.85)_100%)]" />
-      {/* faint blueprint grid, very low opacity */}
+      {/* faint blueprint grid */}
       <div
-        className="absolute inset-0 opacity-[0.04]"
+        className="absolute inset-0 opacity-[0.05]"
         style={{
           backgroundImage:
             "linear-gradient(rgba(138,180,216,0.6) 1px, transparent 1px), linear-gradient(90deg, rgba(138,180,216,0.6) 1px, transparent 1px)",
-          backgroundSize: "56px 56px",
-          maskImage:
-            "radial-gradient(120% 90% at 50% 40%, transparent 45%, black 100%)",
-          WebkitMaskImage:
-            "radial-gradient(120% 90% at 50% 40%, transparent 45%, black 100%)",
+          backgroundSize: "54px 54px",
         }}
       />
+      {/* whole-surface circuit / network field */}
+      <CircuitField />
+      <CodeFragments />
+      {/* labelled corner accents */}
       <NeuralNet />
       <CodeSnippet />
       <Database />
       <ApiFlow />
-      <EdgeTraces />
       <DsaTree />
+      {/* soft vignette so the centre stays readable */}
+      <div className="absolute inset-0 bg-[radial-gradient(115%_85%_at_50%_42%,transparent_38%,rgba(5,5,8,0.7)_100%)]" />
     </div>
   );
 }
